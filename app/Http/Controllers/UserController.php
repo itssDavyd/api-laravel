@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use App\Helpers\JwtAuth;
 
 class UserController extends Controller
 {
@@ -30,7 +31,7 @@ class UserController extends Controller
             $user->role = $role;
 
             //Hash de la contraseña cifrada.
-            $pwd = hash('sha256', $password);
+            $pwd = password_hash($password, PASSWORD_BCRYPT);
             $user->password = $pwd;
 
             //Comprobar duplicidad del usuario.
@@ -69,6 +70,33 @@ class UserController extends Controller
 
     public function login(Request $request)
     {
+
+        $jwtAuth = new JwtAuth();
+
+        //recibir los datos por POST.
+        $json = $request->input('json', null);
+        $params = json_decode($json);
+
+        //Validaciones de si llega el dato y si existe el parametro.
+        $email = (!is_null($json) && isset($params->email) ? $params->email : null);
+        $password = (!is_null($json) && isset($params->password) ? $params->password : null);
+        $getToken = (!is_null($json) && isset($params->getToken) ? $params->getToken : null);
+
+        //cifrar password
+        if (!is_null($email) && !is_null($password) && (is_null($getToken) || $getToken == 'false')) {
+            $signup = $jwtAuth->signup($email, $password);
+
+        } elseif (!is_null($getToken)) {
+            $signup = $jwtAuth->signup($email, $password, $getToken);
+
+        } else {
+            $signup = [
+                'status' => 'error',
+                'message' => 'Envia tus datos por POST'
+            ];
+        }
+
+        return response()->json($signup, 200);
 
     }
 }

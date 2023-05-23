@@ -4,6 +4,7 @@
 namespace App\Helpers;
 
 use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
 
@@ -20,35 +21,39 @@ class JwtAuth
     public function signup($email, $password, $getToken = null)
     {
 
-        $user = User::where(['email' => $email, 'password' => $password])->first();
+        $user = User::where('email', '=', $email)->first();
 
-        $signup = false;
         if (is_object($user)) {
-            $signup = true;
-        }
-        if ($signup) {
-            //Generar token y devolverlo
-            $token = [
-                'sub' => $user->id,
-                'email' => $user->email,
-                'name' => $user->name,
-                'surname' => $user->surname,
-                'iat' => time(),
-                'exp' => time() + (7 * 24 * 60 * 60)
-            ];
-
-            $jwt = JWT::encode($token, $this->key, 'HS256');
-            $decoded = JWT::decode($jwt, $this->key);
-
-            if (!is_null($getToken)) {
-                return $jwt;
+            if (password_verify($password, $user->password)) {
+                $signup = true;
             } else {
-                return $decoded;
+                $signup = false;
             }
 
+            if ($signup) {
+                //Generar token y devolverlo
+                $token = [
+                    'sub' => $user->id,
+                    'email' => $user->email,
+                    'name' => $user->name,
+                    'surname' => $user->surname,
+                    'iat' => time(),
+                    'exp' => time() + (7 * 24 * 60 * 60)
+                ];
+                $jwt = JWT::encode($token, $this->key, 'HS256');
+                $decoded = JWT::decode($jwt, new Key($this->key, 'HS256'));
 
-        } else {
-            return ['status' => 'error', 'message' => 'Login ha fallado'];
+
+                if (is_null($getToken)) {
+                    return $jwt;
+                } else {
+                    return $decoded;
+                }
+
+
+            } else {
+                return ['status' => 'error', 'message' => 'Login ha fallado'];
+            }
         }
     }
 
@@ -58,7 +63,7 @@ class JwtAuth
         $decoded = null;
 
         try {
-            $decoded = JWT::decode($jwt, $this->key);
+            $decoded = JWT::decode($jwt, new Key($this->key, 'HS256'));
 
         } catch (\UnexpectedValueException $e) {
             $auth = false;
