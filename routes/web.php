@@ -16,3 +16,12 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+
+//USER_CONTROLLER
+Route::post('/api/register', [\App\Http\Controllers\UserController::class, 'register']);
+Route::post('/api/login', [\App\Http\Controllers\UserController::class, 'login']);
+
+//TODO LO QUE LLEVE COMO URL DE INICIO /api/cars entra contra el controller de Car.
+Route::resource('/api/cars', \App\Http\Controllers\CarController::class);
+
+
