@@ -39,12 +39,21 @@ class CarController extends Controller
      */
     public function show($id)
     {
-        $car = Car::find($id)->load('user');
+        $car = Car::find($id);
+        if (is_object($car)) {
+            $car = Car::find($id)->load('user');
 
-        return response()->json([
-            'status' => 'success',
-            'car' => $car
-        ], 200);
+            return response()->json([
+                'status' => 'success',
+                'car' => $car
+            ], 200);
+        } else {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'El coche no existe.'
+            ], 200);
+        }
+
     }
 
     /**
@@ -159,27 +168,34 @@ class CarController extends Controller
             $json = $request->input('json', null);
             $params = json_decode($json);
             $params_array = json_decode($json, true);
+            $array_parametros_activos = [];
 
-            //Forma de validacion de Facades (propia de laravel) Y siempre tenemos los errores guardados y devueltos.
-            $validatedData = Validator::make($params_array, [
-                'title' => 'required|min:5',
-                'description' => 'required',
-                'price' => 'required',
-                'status' => 'required'
-            ]);
-
-            if ($validatedData->fails()) {
-                return response()->json($validatedData->errors(), 400);
+            foreach ($params_array as $key => $parametro_activo) {
+                if (!empty($parametro_activo) && !empty($key)) {
+                    $array_parametros_activos[$key] = $parametro_activo;
+                }
             }
+            if (!empty($array_parametros_activos)) {
+                //Forma de validacion de Facades (propia de laravel) Y siempre tenemos los errores guardados y devueltos.
+                $validatedData = Validator::make($params_array, [
+                    'title' => 'min:5',
+                ]);
+                if ($validatedData->fails()) {
+                    return response()->json($validatedData->errors(), 400);
+                }
 
-            //Actualizar coche
-            $car = Car::where('id', '=', $id)->update($params_array);
+                //Actualizar coche
+                //$car = Car::where('id', '=', $id)->update($params_array);
+                $car = Car::findOrFail($id);
+                $car->fill($array_parametros_activos);
+                $car->save();
 
-            $data = [
-                'status' => 'success',
-                'car' => $params,
-                'code' => 200
-            ];
+                $data = [
+                    'status' => 'success',
+                    'car' => $params,
+                    'code' => 200
+                ];
+            }
 
         } else {
             //Devolver error
